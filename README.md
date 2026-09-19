@@ -50,6 +50,9 @@ mi-sistema-salud/
 │   ├── types/                    # Definiciones de TypeScript
 │   └── middleware.ts             # Control global de sesiones y roles
 ├── supabase/                     # Migraciones SQL y esquemas de base de datos
+├── Dockerfile                    # Imagen de la aplicación Next.js
+├── docker-compose.yml            # Orquestación del entorno de desarrollo
+├── .dockerignore
 └── .env.local
 ```
 
@@ -61,18 +64,47 @@ mi-sistema-salud/
 
 **Base de datos y servicios:** PostgreSQL, Supabase Auth (`@supabase/ssr`) y Supabase Storage, con políticas de Row Level Security.
 
+**Contenedores:** Docker y Docker Compose para levantar un entorno de desarrollo idéntico en todas las máquinas del equipo y para ejecutar la instancia local de Supabase.
+
 **Infraestructura:** despliegue en Vercel o Netlify (nivel gratuito), con integración continua desde GitHub y certificado SSL automático.
 
 ## Instalación
 
 ### Requisitos previos
 
-- Node.js 18.17 o superior
-- npm (o pnpm)
+- Docker Desktop (o Docker Engine con el plugin Compose)
+- Node.js 18.17 o superior y npm, si se prefiere trabajar sin contenedor
 - Una cuenta de Supabase con un proyecto creado
 - Git
 
-### Pasos
+Hay dos formas de levantar el proyecto: con Docker (recomendada, porque todo el equipo trabaja sobre el mismo entorno) o directamente con Node.js en la máquina.
+
+### Opción A: con Docker
+
+```bash
+# 1. Clonar el repositorio
+git clone https://github.com/<organizacion>/mi-sistema-salud.git
+cd mi-sistema-salud
+
+# 2. Configurar las variables de entorno
+cp .env.example .env.local
+
+# 3. Construir y levantar los servicios
+docker compose up --build
+```
+
+Comandos útiles durante el desarrollo:
+
+```bash
+docker compose up -d           # Levantar en segundo plano
+docker compose logs -f web     # Ver los logs de la aplicación
+docker compose exec web sh     # Abrir una terminal dentro del contenedor
+docker compose down            # Detener y eliminar los contenedores
+```
+
+El `docker-compose.yml` monta el código como volumen, de modo que los cambios se reflejan en caliente sin reconstruir la imagen. El `Dockerfile` usa una construcción multi-etapa: una etapa de desarrollo con todas las dependencias y una etapa de producción con la salida `standalone` de Next.js.
+
+### Opción B: instalación local con Node.js
 
 ```bash
 # 1. Clonar el repositorio
@@ -94,7 +126,9 @@ npx supabase db push
 npm run dev
 ```
 
-La aplicación queda disponible en `http://localhost:3000`.
+En cualquiera de las dos opciones, la aplicación queda disponible en `http://localhost:3000`.
+
+> La CLI de Supabase también trabaja sobre Docker. Si se quiere una base de datos local en lugar del proyecto en la nube, `npx supabase start` levanta PostgreSQL, Auth y Storage en contenedores y entrega las credenciales locales para el `.env.local`.
 
 ### Scripts disponibles
 
