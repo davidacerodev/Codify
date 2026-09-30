@@ -31,29 +31,58 @@ El sistema se construye como una aplicación **fullstack monolítica modular** s
 Se sigue una organización por características de negocio (*feature-based*) combinada con las convenciones de Next.js:
 
 ```text
-mi-sistema-salud/
+Codify/
 ├── src/
 │   ├── app/                      # App Router: rutas y agrupaciones por layout
-│   │   ├── (auth)/               # Autenticación (login, recuperación de contraseña)
+│   │   ├── (auth)/               # Autenticación (login, logout)
+│   │   │   ├── layout.tsx        # Layout para páginas de autenticación
+│   │   │   └── login/page.tsx    # Página de inicio de sesión
 │   │   ├── (dashboard)/          # Panel protegido para personal médico y administrativo
-│   │   │   ├── citas/            # Gestión y calendario de citas
-│   │   │   ├── inventario/       # Control de existencias y kardex
-│   │   │   └── despacho/         # Dispensación de medicamentos
-│   │   └── api/                  # Endpoints REST opcionales
+│   │   │   ├── layout.tsx        # Layout con navegación y protección de rutas
+│   │   │   ├── page.tsx          # Página principal del dashboard
+│   │   │   ├── citas/page.tsx    # Gestión y calendario de citas
+│   │   │   ├── inventario/page.tsx # Control de existencias y kardex
+│   │   │   └── despacho/page.tsx # Dispensación de medicamentos
+│   │   ├── auth/logout/route.ts  # Endpoint de cierre de sesión
+│   │   ├── globals.css           # Estilos globales con Tailwind
+│   │   ├── layout.tsx            # Layout raíz
+│   │   └── page.tsx              # Página de entrada (redirect al dashboard)
+│   ├── components/ui/            # Componentes UI base (Shadcn UI)
+│   │   ├── button.tsx            # Botón con variantes
+│   │   ├── card.tsx              # Tarjetas con header, content y footer
+│   │   ├── input.tsx             # Campo de entrada estilizado
+│   │   └── label.tsx             # Etiqueta accesible
 │   ├── features/                 # Lógica aislada por módulo de negocio
 │   │   ├── auth/                 # Sesiones y perfiles
 │   │   ├── citas/                # Actions, componentes y schemas de agendamiento
 │   │   ├── inventario/           # Actions, tablas y validaciones de medicamentos
 │   │   └── despacho/             # Actions y procesos de salida de insumos
-│   ├── components/               # UI base (Shadcn UI) y componentes compartidos
-│   ├── lib/                      # Clientes de Supabase (client, server, middleware)
+│   ├── lib/                      # Utilidades y clientes
+│   │   ├── supabase/             # Clientes de Supabase
+│   │   │   ├── client.ts         # Cliente para el navegador
+│   │   │   ├── server.ts         # Cliente para Server Components/Actions
+│   │   │   └── middleware.ts     # Cliente para middleware
+│   │   └── utils.ts              # Funciones utilitarias (cn)
 │   ├── types/                    # Definiciones de TypeScript
+│   │   └── index.ts              # Tipos del sistema
 │   └── middleware.ts             # Control global de sesiones y roles
-├── supabase/                     # Migraciones SQL y esquemas de base de datos
+├── supabase/
+│   └── migrations/               # Migraciones SQL
+│       └── 001_initial_schema.sql # Esquema inicial con RLS
+├── public/                       # Archivos estáticos
+├── .dockerignore
+├── .env.example                  # Plantilla de variables de entorno
+├── .eslintrc.json
+├── .gitignore
 ├── Dockerfile                    # Imagen de la aplicación Next.js
 ├── docker-compose.yml            # Orquestación del entorno de desarrollo
-├── .dockerignore
-└── .env.local
+├── next.config.mjs
+├── next-env.d.ts
+├── package.json
+├── package-lock.json
+├── postcss.config.mjs
+├── tailwind.config.ts
+└── tsconfig.json
 ```
 
 ## Tecnologías
@@ -64,7 +93,7 @@ mi-sistema-salud/
 
 **Base de datos y servicios:** PostgreSQL, Supabase Auth (`@supabase/ssr`) y Supabase Storage, con políticas de Row Level Security.
 
-**Contenedores:** Docker y Docker Compose para levantar un entorno de desarrollo idéntico en todas las máquinas del equipo y para ejecutar la instancia local de Supabase.
+**Contenedores:** Docker y Docker Compose para levantar un entorno de desarrollo idéntico en todas las máquinas del equipo.
 
 **Infraestructura:** despliegue en Vercel o Netlify (nivel gratuito), con integración continua desde GitHub y certificado SSL automático.
 
@@ -73,21 +102,19 @@ mi-sistema-salud/
 ### Requisitos previos
 
 - Docker Desktop (o Docker Engine con el plugin Compose)
-- Node.js 18.17 o superior y npm, si se prefiere trabajar sin contenedor
 - Una cuenta de Supabase con un proyecto creado
 - Git
 
-Hay dos formas de levantar el proyecto: con Docker (recomendada, porque todo el equipo trabaja sobre el mismo entorno) o directamente con Node.js en la máquina.
-
-### Opción A: con Docker
+### Levantar el proyecto con Docker
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/<organizacion>/mi-sistema-salud.git
-cd mi-sistema-salud
+git clone https://github.com/davidacerodev/Codify.git
+cd Codify
 
 # 2. Configurar las variables de entorno
 cp .env.example .env.local
+# Editar .env.local con las credenciales del proyecto de Supabase
 
 # 3. Construir y levantar los servicios
 docker compose up --build
@@ -104,31 +131,12 @@ docker compose down            # Detener y eliminar los contenedores
 
 El `docker-compose.yml` monta el código como volumen, de modo que los cambios se reflejan en caliente sin reconstruir la imagen. El `Dockerfile` usa una construcción multi-etapa: una etapa de desarrollo con todas las dependencias y una etapa de producción con la salida `standalone` de Next.js.
 
-### Opción B: instalación local con Node.js
+### Aplicar migraciones de la base de datos
 
-```bash
-# 1. Clonar el repositorio
-git clone https://github.com/<organizacion>/mi-sistema-salud.git
-cd mi-sistema-salud
-
-# 2. Instalar dependencias
-npm install
-
-# 3. Configurar las variables de entorno
-cp .env.example .env.local
-# Editar .env.local con las credenciales del proyecto de Supabase
-
-# 4. Aplicar las migraciones de la base de datos
-npx supabase link --project-ref <project-ref>
-npx supabase db push
-
-# 5. Levantar el servidor de desarrollo
-npm run dev
-```
-
-En cualquiera de las dos opciones, la aplicación queda disponible en `http://localhost:3000`.
-
-> La CLI de Supabase también trabaja sobre Docker. Si se quiere una base de datos local en lugar del proyecto en la nube, `npx supabase start` levanta PostgreSQL, Auth y Storage en contenedores y entrega las credenciales locales para el `.env.local`.
+1. Ir a Supabase Dashboard → SQL Editor
+2. Crear una nueva query
+3. Copiar el contenido de `supabase/migrations/001_initial_schema.sql`
+4. Ejecutar la query
 
 ### Scripts disponibles
 
