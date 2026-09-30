@@ -4,15 +4,25 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
-# ---- Etapa 2: Builder ----
+# ---- Etapa 2: Desarrollo ----
+FROM node:20-alpine AS development
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+EXPOSE 3000
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+CMD ["npm", "run", "dev"]
+
+# ---- Etapa 3: Builder (producción) ----
 FROM node:20-alpine AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# ---- Etapa 3: Producción ----
-FROM node:20-alpine AS runner
+# ---- Etapa 4: Producción ----
+FROM node:20-alpine AS production
 WORKDIR /app
 ENV NODE_ENV=production
 
