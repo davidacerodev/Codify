@@ -11,3 +11,5 @@ services:
       - .:/app
       - /app/node_modules
     restart: unless-stopped
+    environment:
+      - NODE_ENV=development

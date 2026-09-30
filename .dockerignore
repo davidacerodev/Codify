@@ -4,7 +4,10 @@ out
 build
 .git
 .gitignore
-.env.local
-.env*.local
 *.log
-.DS_Store
+.env.local
+.env.*.local
+Dockerfile
+docker-compose.yml
+.dockerignore
+README.md
