@@ -1,94 +1,173 @@
 "use client";
 
-import { useState } from "react";
+/** Pantalla de acceso. En demo selecciona una identidad ficticia; en modo real envía las credenciales al cliente HTTP de autenticación. */
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-
+import {
+  ArrowRight,
+  LockKeyhole,
+  ShieldCheck,
+  Stethoscope,
+  Pill,
+  UserRound,
+} from "lucide-react";
+import { DEMO_MODE, roleLabels } from "@/lib/app-config";
+import {
+  DEMO_SESSION,
+  DEMO_STORAGE,
+  demoIds,
+  seedDemo,
+} from "@/features/workspace/demo";
+import { signIn } from "@/features/auth/client";
+import { Button } from "@/components/ui/button";
+import { Field, Notice, SubmitButton, Modal } from "@/components/ui/shared";
+import type { Role } from "@/types";
+const roles = [
+  { value: "admin", icon: ShieldCheck },
+  { value: "medico", icon: Stethoscope },
+  { value: "farmaceutico", icon: Pill },
+  { value: "paciente", icon: UserRound },
+] as const;
 export default function LoginPage() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
-
-  async function handleSubmit(e: React.FormEvent) {
+  const [role, setRole] = useState<Role>("admin"),
+    [error, setError] = useState("");
+  const [email, setEmail] = useState(""),
+    [password, setPassword] = useState(""),
+    [busy, setBusy] = useState(false),
+    [reset, setReset] = useState(false);
+  useEffect(() => {
+    const reason = new URLSearchParams(window.location.search).get("reason");
+    if (reason === "config")
+      setError("El servicio de acceso todavía no está configurado.");
+    if (reason === "session")
+      setError("Tu sesión terminó. Inicia sesión de nuevo.");
+    if (reason === "profile")
+      setError(
+        "No se encontró un perfil activo. Consulta al administrador de la aplicación.",
+      );
+  }, []);
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      setError(error.message);
-      setLoading(false);
-    } else {
+    setError("");
+    setBusy(true);
+    try {
+      if (DEMO_MODE) {
+        if (!localStorage.getItem(DEMO_STORAGE))
+          localStorage.setItem(DEMO_STORAGE, JSON.stringify(seedDemo()));
+        sessionStorage.setItem(DEMO_SESSION, demoIds[role]);
+      } else {
+        const result = await signIn(email, password);
+        if (!result.ok) throw new Error(result.error);
+      }
       router.push("/dashboard");
       router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo iniciar sesión.");
+    } finally {
+      setBusy(false);
     }
   }
-
   return (
-    <div className="w-full max-w-md p-8 bg-white rounded-lg shadow-md">
-      <h1 className="text-2xl font-bold text-center mb-6">
-        Enfermería Unitrópico
-      </h1>
-      <p className="text-center text-gray-600 mb-8">Iniciar sesión</p>
-
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="email"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Correo electrónico
-          </label>
-          <input
-            id="email"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="correo@ejemplo.com"
-          />
-        </div>
-
-        <div>
-          <label
-            htmlFor="password"
-            className="block text-sm font-medium text-gray-700 mb-1"
-          >
-            Contraseña
-          </label>
-          <input
-            id="password"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="••••••••"
-          />
-        </div>
-
-        {error && (
-          <div className="p-3 bg-red-50 border border-red-200 rounded-md">
-            <p className="text-sm text-red-600">{error}</p>
-          </div>
+    <>
+      <section className="auth-card">
+        <span className="auth-icon">
+          <LockKeyhole size={23} />
+        </span>
+        <h1>Bienvenido de nuevo</h1>
+        <p className="muted">Ingresa a tu espacio de atención y gestión.</p>
+        <form className="form-stack" onSubmit={submit}>
+          {DEMO_MODE ? (
+            <>
+              <div className="demo-label">VERSIÓN DE DEMOSTRACIÓN</div>
+              <p className="form-hint">
+                Elige un rol para recorrer las pantallas. Utiliza únicamente
+                datos ficticios.
+              </p>
+              <div className="role-options">
+                {roles.map((r) => (
+                  <button
+                    className={role === r.value ? "selected" : ""}
+                    type="button"
+                    key={r.value}
+                    onClick={() => setRole(r.value)}
+                    aria-pressed={role === r.value}
+                  >
+                    <r.icon size={20} />
+                    {roleLabels[r.value]}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <Field label="Correo electrónico">
+                <input
+                  type="email"
+                  autoComplete="username"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                />
+              </Field>
+              <Field label="Contraseña">
+                <input
+                  type="password"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Escribe tu contraseña"
+                />
+              </Field>
+            </>
+          )}
+          {error && <Notice>{error}</Notice>}
+          <SubmitButton busy={busy} className="w-full">
+            {DEMO_MODE ? "Entrar a la demostración" : "Iniciar sesión"}
+            <ArrowRight size={17} className="ml-2" />
+          </SubmitButton>
+          <Link className="text-link auth-link" href="/recuperar-contrasena">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </form>
+        {DEMO_MODE && (
+          <button className="reset-link" onClick={() => setReset(true)}>
+            Restablecer datos de ejemplo
+          </button>
         )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full py-2 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {loading ? "Iniciando sesión..." : "Iniciar sesión"}
-        </button>
-      </form>
-    </div>
+      </section>
+      <Modal
+        open={reset}
+        onClose={() => setReset(false)}
+        title="Restablecer demostración"
+      >
+        <p>
+          Se reemplazarán los cambios de esta demostración por los datos de
+          ejemplo.
+        </p>
+        <div className="actions">
+          <Button variant="outline" onClick={() => setReset(false)}>
+            Cancelar
+          </Button>
+          <Button
+            onClick={() => {
+              try {
+                localStorage.setItem(DEMO_STORAGE, JSON.stringify(seedDemo()));
+                setReset(false);
+                setError("");
+              } catch {
+                setError("El navegador no permite guardar los datos.");
+                setReset(false);
+              }
+            }}
+          >
+            Restablecer
+          </Button>
+        </div>
+      </Modal>
+    </>
   );
 }
