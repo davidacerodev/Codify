@@ -1,3 +1,4 @@
+/** Tipos compartidos de los datos que presentan las pantallas. No crean tablas ni conceden permisos en la base de datos. */
 // ============================================================
 // Tipos del sistema de Enfermería Unitrópico
 // ============================================================
@@ -12,10 +13,27 @@ export interface Profile {
   nombre: string;
   apellido: string;
   rol: Role;
-  telefono?: string;
+  activo: boolean;
+  telefono?: string | null;
   documento_identidad: string;
   created_at: string;
   updated_at: string;
+}
+
+export type Person = Pick<Profile, "id" | "nombre" | "apellido" | "rol">;
+
+export interface Workspace {
+  profile: Profile;
+  profiles: Profile[];
+  people: Person[];
+  citas: Cita[];
+  medicamentos: Medicamento[];
+  lotes: Lote[];
+  despachos: Despacho[];
+  items: DespachoItem[];
+  auditoria: Auditoria[];
+  horarios?: Horario[];
+  inventoryHistory?: Auditoria[];
 }
 
 // --- Citas ---
@@ -33,7 +51,17 @@ export interface Cita {
 }
 
 // --- Medicamentos ---
+export interface Horario {
+  id: string;
+  medico_id: string;
+  fecha: string;
+  desde: string;
+  hasta: string;
+  estado: "activo" | "cancelado";
+}
+
 export interface Medicamento {
+  activo?: boolean;
   id: string;
   nombre: string;
   descripcion?: string;
