@@ -36,7 +36,7 @@ export const correctionSchema = z.discriminatedUnion("type", [
     unidad_medida: text(60),
     stock_minimo: z.number().int().min(0).max(100000),
   }),
-  z.object({ type: z.literal("medication.delete"), id, motivo: text(300) }),
+  z.object({ type: z.literal("medication.archive"), id, motivo: text(300) }),
   z.object({
     type: z.literal("batch.update"),
     id,
@@ -54,7 +54,7 @@ export function isCorrection(command: {
     "schedule.save",
     "schedule.cancel",
     "medication.update",
-    "medication.delete",
+    "medication.archive",
     "batch.update",
   ].includes(command.type);
 }
@@ -258,17 +258,17 @@ export function applyCorrection(
       before = { ...med };
       record = med.id;
       table = "medicamentos";
-      if (cmd.type === "medication.delete") {
+      if (cmd.type === "medication.archive") {
         if (
           data.lotes.some((l) => l.medicamento_id === med.id && l.cantidad > 0)
         )
           throw new Error(
-            "Hay existencias en sus lotes. Registra la salida o un ajuste justificado antes de eliminar.",
+            "Hay existencias en sus lotes. Registra la salida o el ajuste justificado antes de retirar el medicamento del catálogo.",
           );
         med.activo = false;
         med.updated_at = now;
         after = { ...med, motivo: cmd.motivo };
-        action = "Medicamento eliminado del catálogo";
+        action = "Medicamento retirado del catálogo";
       } else {
         if (
           data.medicamentos.some(

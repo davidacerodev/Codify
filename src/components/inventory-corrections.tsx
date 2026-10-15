@@ -1,6 +1,6 @@
 "use client";
 
-/** Acciones de inventario e historial compartidos. La eliminación conserva trazabilidad y los ajustes registran un motivo. */
+/** Acciones de inventario e historial compartidos. Los retiros conservan trazabilidad y los ajustes registran un motivo. */
 import { useState } from "react";
 import { useWorkspace } from "@/features/workspace/provider";
 import type { Medicamento, Lote } from "@/types";
@@ -14,14 +14,14 @@ import {
   EmptyState,
 } from "@/components/ui/shared";
 import { dateLabel } from "@/lib/app-config";
-// Edita datos del medicamento o solicita la baja lógica con confirmación de código y motivo.
+// Edita datos del medicamento o solicita su retiro lógico con confirmación de código y motivo.
 export function InventoryActions({
   medication: m,
 }: {
   medication: Medicamento;
 }) {
   const { run, busy } = useWorkspace();
-  const [mode, setMode] = useState<"edit" | "delete" | null>(null),
+  const [mode, setMode] = useState<"edit" | "retire" | null>(null),
     [error, setError] = useState("");
   return (
     <>
@@ -40,17 +40,17 @@ export function InventoryActions({
           size="sm"
           variant="destructive"
           onClick={() => {
-            setMode("delete");
+            setMode("retire");
             setError("");
           }}
         >
-          Eliminar
+          Retirar del catálogo
         </Button>
       </div>
       <Modal
         open={!!mode}
         title={
-          mode === "delete" ? "Eliminar medicamento" : "Editar medicamento"
+          mode === "retire" ? "Retirar medicamento del catálogo" : "Editar medicamento"
         }
         onClose={() => {
           if (!busy) setMode(null);
@@ -65,11 +65,11 @@ export function InventoryActions({
               setError("");
               const f = new FormData(e.currentTarget);
               try {
-                if (mode === "delete") {
+                if (mode === "retire") {
                   if (String(f.get("confirmacion")) !== m.codigo)
                     throw new Error("Escribe el código exacto para confirmar.");
                   await run({
-                    type: "medication.delete",
+                    type: "medication.archive",
                     id: m.id,
                     motivo: String(f.get("motivo")),
                   });
@@ -145,22 +145,22 @@ export function InventoryActions({
                   Sus lotes y movimientos se conservarán en el historial.
                 </p>
                 <Notice kind="info">
-                  Solo se puede eliminar cuando todos sus lotes están en cero,
+                  Solo se puede retirar cuando todos sus lotes están en cero,
                   incluidos los vencidos. Registra primero la salida o el ajuste
                   correspondiente.
                 </Notice>
                 <Field label={`Escribe ${m.codigo} para confirmar`}>
                   <input name="confirmacion" autoComplete="off" required />
                 </Field>
-                <Field label="Motivo de eliminación">
+                <Field label="Motivo del retiro">
                   <textarea name="motivo" required maxLength={300} />
                 </Field>
               </>
             )}
             {error && <Notice>{error}</Notice>}
             <SubmitButton busy={busy}>
-              {mode === "delete"
-                ? "Confirmar eliminación"
+              {mode === "retire"
+                ? "Confirmar retiro"
                 : "Guardar medicamento"}
             </SubmitButton>
           </form>
@@ -298,18 +298,19 @@ export function InventoryHistory() {
           : a.accion.includes("registrad") && typeof n.cantidad === "number"
             ? n.cantidad
             : null;
-      const deleted = a.accion.includes("eliminado");
+      const retired =
+        a.accion.includes("retirado") || a.accion.includes("archivado");
       return {
         id: a.id,
         date: a.created_at,
-        kind: deleted
-          ? "eliminacion"
+        kind: retired
+          ? "retiro"
           : delta !== null && delta < 0
             ? "salida"
             : delta !== null && delta > 0
               ? "entrada"
               : "cambio",
-        action: a.accion,
+        action: retired ? "Medicamento retirado del catálogo" : a.accion,
         medicine: String(
           n.nombre || med?.nombre || b.nombre || "Registro anterior",
         ),
@@ -379,7 +380,7 @@ export function InventoryHistory() {
         <div>
           <h2>Historial de inventario</h2>
           <p>
-            Entradas, ajustes, eliminaciones y registros de salida por despacho.
+            Entradas, ajustes, retiros y registros de salida por despacho.
           </p>
         </div>
       </div>
@@ -396,7 +397,7 @@ export function InventoryHistory() {
               <option value="entrada">Entradas</option>
               <option value="salida">Salidas</option>
               <option value="cambio">Cambios</option>
-              <option value="eliminacion">Eliminaciones</option>
+              <option value="retiro">Retiros del catálogo</option>
             </select>
           </Field>
           <Field label="Movimientos desde">
@@ -471,7 +472,7 @@ export function InventoryHistory() {
       )}
       <div className="table-footer">
         {visible.length} movimiento(s) · Los registros históricos se conservan
-        al eliminar un medicamento.
+        al retirar un medicamento del catálogo.
       </div>
       <Modal
         open={!!selected}

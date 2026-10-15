@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/shared";
 export default function InventarioPage() {
   const { data, stock, run, busy } = useWorkspace();
-  const editable = ["admin", "medico", "farmaceutico"].includes(
+  const editable = ["admin", "farmaceutico"].includes(
     data.profile.rol,
   );
   const [search, setSearch] = useState(""),

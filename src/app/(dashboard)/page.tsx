@@ -1,17 +1,9 @@
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DashboardPage() {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("*")
-    .eq("id", user?.id)
-    .single();
+  const supabase = await createClient();
+  const { data: profiles } = await supabase.rpc("get_own_profile");
+  const profile = profiles?.[0];
 
   return (
     <div className="space-y-6">

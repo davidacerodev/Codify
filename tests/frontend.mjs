@@ -226,14 +226,21 @@ try {
     assert.equal(download.suggestedFilename(), "historial-codify.csv");
     assert.equal(await download.failure(), null);
   });
-  await test("Accesos de médico y auxiliar de enfermería", async () => {
+  await test("El médico consulta inventario y el auxiliar administra despachos", async () => {
     await login("Médico");
     assert.equal(
       await page.getByRole("link", { name: "Despachos", exact: true }).count(),
       0,
     );
     await open("/inventario");
-    await page.getByRole("link", { name: "Registrar medicamento" }).waitFor();
+    assert.equal(
+      await page.getByRole("link", { name: "Registrar medicamento" }).count(),
+      0,
+    );
+    assert.equal(
+      await page.getByRole("button", { name: "Editar medicamento" }).count(),
+      0,
+    );
     await login("Auxiliar de enfermería");
     assert.equal(
       await page.getByRole("link", { name: "Usuarios", exact: true }).count(),
@@ -258,7 +265,7 @@ try {
       fullPage: true,
       animations: "disabled",
     });
-    await open("/citas");
+    await open("/horarios");
     await page
       .getByRole("heading", { name: "Mis horarios de atención" })
       .waitFor();
@@ -364,7 +371,7 @@ try {
   });
   await test("La cancelación de horarios protege las citas reservadas", async () => {
     await login("Médico");
-    await open("/citas");
+    await open("/horarios");
     await page.getByLabel("Fecha de disponibilidad").fill(agendaDate);
     page.once("dialog", (d) => d.accept());
     await page
@@ -375,6 +382,7 @@ try {
         "Este horario tiene citas. Cancela o reprograma esas citas antes de retirar sus cupos.",
       )
       .waitFor();
+    await open("/citas");
     const appointment = page
       .getByRole("row")
       .filter({ hasText: "Consulta con horario publicado QA" });
@@ -391,6 +399,8 @@ try {
       .click();
     await page.getByRole("dialog").waitFor({ state: "hidden" });
     page.once("dialog", (d) => d.accept());
+    await open("/horarios");
+    await page.getByLabel("Fecha de disponibilidad").fill(agendaDate);
     await page
       .getByRole("button", { name: "Cancelar horario", exact: true })
       .click();
@@ -406,8 +416,8 @@ try {
       })
       .waitFor();
   });
-  await test("Médico edita inventario y consulta las salidas", async () => {
-    await login("Médico");
+  await test("Auxiliar edita inventario y consulta las salidas", async () => {
+    await login("Auxiliar de enfermería");
     await open("/inventario");
     const row = page
       .locator("table")
@@ -441,22 +451,22 @@ try {
       fullPage: true,
       animations: "disabled",
     });
-    await row.getByRole("button", { name: "Eliminar", exact: true }).click();
+    await row.getByRole("button", { name: "Retirar del catálogo", exact: true }).click();
     await page.getByLabel("Escribe QA-01 para confirmar").fill("QA-01");
     await page
-      .getByLabel("Motivo de eliminación")
+      .getByLabel("Motivo del retiro")
       .fill("Prueba de conservación de stock");
-    await page.getByRole("button", { name: "Confirmar eliminación" }).click();
+    await page.getByRole("button", { name: "Confirmar retiro" }).click();
     await page
       .getByText(
-        "Hay existencias en sus lotes. Registra la salida o un ajuste justificado antes de eliminar.",
+        "Hay existencias en sus lotes. Registra la salida o el ajuste justificado antes de retirar el medicamento del catálogo.",
       )
       .waitFor();
     await page
       .getByRole("button", { name: "Cerrar ventana", exact: true })
       .click();
   });
-  await test("Ajustes justificados y eliminación conservan los registros históricos", async () => {
+  await test("Ajustes justificados y retiro del catálogo conservan los registros históricos", async () => {
     const row = page
       .locator("table")
       .first()
@@ -483,22 +493,22 @@ try {
     await page
       .getByRole("button", { name: "Cerrar ventana", exact: true })
       .click();
-    await row.getByRole("button", { name: "Eliminar", exact: true }).click();
+    await row.getByRole("button", { name: "Retirar del catálogo", exact: true }).click();
     await page.getByLabel("Escribe QA-01 para confirmar").fill("QA-01");
     await page
-      .getByLabel("Motivo de eliminación")
+      .getByLabel("Motivo del retiro")
       .fill("Retiro del catálogo de prueba");
-    await page.getByRole("button", { name: "Confirmar eliminación" }).click();
+    await page.getByRole("button", { name: "Confirmar retiro" }).click();
     await page.getByRole("dialog").waitFor({ state: "hidden" });
     await page.reload();
     await page
       .getByRole("heading", { name: "Inventario", exact: true })
       .waitFor();
     assert.equal(await row.count(), 0);
-    await page.getByLabel("Tipo de movimiento").selectOption("eliminacion");
+    await page.getByLabel("Tipo de movimiento").selectOption("retiro");
     await page
       .locator("#historial")
-      .getByText("Medicamento eliminado del catálogo", { exact: true })
+      .getByText("Medicamento retirado del catálogo", { exact: true })
       .waitFor();
     await page.getByLabel("Tipo de movimiento").selectOption("salida");
     assert.equal(
