@@ -1,19 +1,14 @@
 import { createClient } from "@/lib/supabase/server";
-import { revalidatePath } from "next/cache";
+import { apiFailure, isSameOriginRequest } from "@/lib/api/http";
 import { type NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (user) {
-    await supabase.auth.signOut();
+  if (!isSameOriginRequest(req)) {
+    return apiFailure("Origen de solicitud no permitido.", 403);
   }
 
-  revalidatePath("/", "layout");
+  const supabase = await createClient();
+  await supabase.auth.signOut({ scope: "local" });
   return NextResponse.redirect(new URL("/login", req.url), {
     status: 302,
   });

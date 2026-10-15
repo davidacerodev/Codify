@@ -2,7 +2,9 @@
 import type { Role } from "@/types";
 
 // La demostración se habilita de forma explícita. Nunca depende de que falten claves.
-export const DEMO_MODE = process.env.NEXT_PUBLIC_DEMO_MODE === "true";
+export const DEMO_MODE =
+  process.env.NODE_ENV !== "production" &&
+  process.env.NEXT_PUBLIC_DEMO_MODE === "true";
 export const APP_NAME = "Enfermería Unitrópico";
 export const APP_DESCRIPTION =
   "Sistema de información web para la gestión integral de servicios de salud";

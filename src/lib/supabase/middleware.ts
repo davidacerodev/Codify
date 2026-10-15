@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { DEMO_MODE } from "@/lib/app-config";
 
 export async function updateSession(request: NextRequest) {
+  if (DEMO_MODE) return NextResponse.next({ request });
+
   let supabaseResponse = NextResponse.next({
     request,
   });
@@ -37,9 +40,21 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  const isApiRequest = request.nextUrl.pathname.startsWith("/api/");
+  const publicAuthPaths = [
+    "/login",
+    "/recuperar-contrasena",
+    "/actualizar-contrasena",
+  ];
+  const isPublicAuthPage = publicAuthPaths.some(
+    (path) =>
+      request.nextUrl.pathname === path ||
+      request.nextUrl.pathname.startsWith(`${path}/`),
+  );
   if (
     !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
+    !isApiRequest &&
+    !isPublicAuthPage &&
     !request.nextUrl.pathname.startsWith("/auth")
   ) {
     // no user, potentially respond by redirecting the user to the login page
