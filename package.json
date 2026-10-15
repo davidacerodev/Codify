@@ -6,36 +6,43 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "check": "npm run typecheck && npm run lint",
-    "test:ui": "node scripts/run-ui-tests.mjs"
+    "test:ui": "node scripts/run-ui-tests.mjs",
+    "test:api:security": "node tests/api-security.mjs",
+    "supabase": "supabase"
   },
   "dependencies": {
     "@radix-ui/react-label": "^2.1.0",
     "@radix-ui/react-slot": "^1.1.0",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.3",
+    "@tailwindcss/postcss": "^4.3.3",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.1",
     "lucide-react": "^0.454.0",
-    "next": "14.2.35",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "next": "^16.4.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
     "tailwind-merge": "^2.5.4",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.16.11",
-    "@types/react": "^18.3.11",
-    "@types/react-dom": "^18.3.1",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^8.57.1",
-    "eslint-config-next": "14.2.35",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^16.4.1",
     "playwright": "1.62.1",
-    "postcss": "^8.4.47",
-    "tailwindcss": "^3.4.14",
+    "supabase": "^2.121.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^5.6.3"
   },
   "engines": {
-    "node": ">=20.0.0"
+    "node": ">=22.0.0"
+  },
+  "overrides": {
+    "fast-glob": "3.3.3"
   }
 }

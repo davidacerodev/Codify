@@ -7,10 +7,91 @@ services:
     ports:
       - "3000:3000"
     env_file:
-      - .env.local
+      - .env.docker
     volumes:
       - .:/app
       - /app/node_modules
+      - /app/.next
+      - ./.env.docker:/app/.env.local:ro
     restart: unless-stopped
     environment:
-      - NODE_ENV=development
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000').then((response) => process.exit(response.ok ? 0 : 1)).catch(() => process.exit(1))"
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  supabase-cli:
+    profiles: ["supabase"]
+    network_mode: host
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: supabase-cli
+    working_dir: /app
+    entrypoint: ["npx", "supabase"]
+    env_file:
+      - .env.supabase
+    environment:
+      SUPABASE_CLI_BINARY_OVERRIDE: /app/node_modules/@supabase/cli-linux-x64-musl/bin/supabase
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  ui-test:
+    profiles: ["test"]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ui-test
+    working_dir: /app
+    entrypoint: ["node", "scripts/run-ui-tests.mjs"]
+    environment:
+      NODE_ENV: development
+      NEXT_PUBLIC_DEMO_MODE: "true"
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: local-ui-test-key
+      NEXT_TELEMETRY_DISABLED: "1"
+      TEST_PORT: "3100"
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE: /usr/bin/chromium
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - ui_test_next:/app/.next
+
+  api-test:
+    profiles: ["api-test"]
+    network_mode: host
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: ui-test
+    working_dir: /app
+    entrypoint: ["node", "scripts/run-api-integration.mjs"]
+    env_file:
+      - .env.api-test
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      TEST_PORT: "3101"
+      API_TEST_BASE_URL: http://localhost:3101
+      PLAYWRIGHT_CHROMIUM_EXECUTABLE: /usr/bin/chromium
+      SUPABASE_CLI_BINARY_OVERRIDE: /app/node_modules/@supabase/cli-linux-x64-musl/bin/supabase
+    volumes:
+      - .:/app
+      - /app/node_modules
+      - api_test_next:/app/.next
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  ui_test_next:
+  api_test_next:
